@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ApexFinance | Control Financiero Personal</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js para Estadísticas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0B0F19',
+                        darkCard: '#111827',
+                        darkBorder: '#1F2937',
+                        darkHover: '#374151',
+                        accentGreen: '#10B981', // Ingresos / Positivo
+                        accentRed: '#EF4444',   // Gastos
+                        accentBlue: '#3B82F6',  // Cuentas por Cobrar
+                        accentAmber: '#F59E0B', // Deudas
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0B0F19;
+            color: #F3F4F6;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B0F19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1F2937;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #374151;
+        }
+
+        .glass-card {
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(31, 41, 55, 0.8);
+        }
+
+        .glow-green:hover {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
+        }
+        .glow-red:hover {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.25);
+        }
+        .glow-blue:hover {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.25);
+        }
+        .glow-amber:hover {
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.25);
+        }
+
+        /* Modal transitions */
+        .modal {
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+        .modal-hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-accentBlue selection:text-white">
+
+    <div>
+        <!-- CABECERA PRINCIPAL -->
+        <header class="border-b border-darkBorder bg-darkCard/90 sticky top-0 z-30 backdrop-blur-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+                
+                <!-- Logo / Título -->
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-emerald-500 flex items-center justify-center text-white shadow-lg shadow-blue-900/30">
+                        <i class="fa-solid font-bold fa-wallet text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-extrabold tracking-wider uppercase bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
+                            APEX<span class="text-accentBlue">FINANCE</span>
+                        </h1>
+                        <p class="text-xs text-gray-400 font-mono tracking-tight hidden sm:block">Control Financiero & Patrimonio</p>
+                    </div>
+                </div>
+
+                <!-- Selector de Moneda y Acciones Globales -->
+                <div class="flex items-center gap-3">
+                    
+                    <!-- Currency Switcher -->
+                    <div class="bg-darkBg p-1 rounded-xl border border-darkBorder flex items-center shadow-inner">
+                        <button id="btnCurrencyPEN" onclick="switchCurrency('PEN')" class="px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all duration-200 flex items-center gap-1.5 bg-accentBlue text-white shadow-md">
+                            <span class="text-sm">S/</span> PEN
+                        </button>
+                        <button id="btnCurrencyEUR" onclick="switchCurrency('EUR')" class="px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all duration-200 flex items-center gap-1.5 text-gray-400 hover:text-white">
+                            <span class="text-sm">€</span> EUR
+                        </button>
+                    </div>
+
+                    <!-- Backup Data Actions -->
+                    <div class="relative group">
+                        <button class="w-10 h-10 rounded-xl border border-darkBorder bg-darkBg hover:bg-darkHover flex items-center justify-center text-gray-300 transition-all" title="Opciones de Datos">
+                            <i class="fa-solid fa-sliders"></i>
+                        </button>
+                        <div class="absolute right-0 mt-2 w-48 bg-darkCard border border-darkBorder rounded-xl shadow-2xl p-2 hidden group-hover:block z-50">
+                            <button onclick="exportData()" class="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-darkBorder rounded-lg flex items-center gap-2">
+                                <i class="fa-solid fa-download text-accentBlue"></i> Exportar Datos (JSON)
+                            </button>
+                            <label class="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-darkBorder rounded-lg flex items-center gap-2 cursor-pointer">
+                                <i class="fa-solid fa-upload text-accentGreen"></i> Importar Backup
+                                <input type="file" id="importFileInput" onchange="importData(event)" class="hidden" accept=".json">
+                            </label>
+                            <hr class="border-darkBorder my-1">
+                            <button onclick="confirmResetData()" class="w-full text-left px-3 py-2 text-xs text-accentRed hover:bg-red-950/40 rounded-lg flex items-center gap-2">
+                                <i class="fa-solid fa-trash"></i> Reiniciar Datos
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+            
+            <!-- CONTENEDOR DE MONEDA ACTUAL (INDICADOR GLOBAL) -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-darkBorder/60 pb-4 gap-2">
+                <div>
+                    <h2 class="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+                        Panel General 
+                        <span id="currentCurrencyBadge" class="text-xs px-2.5 py-0.5 rounded-md bg-blue-500/10 text-accentBlue border border-blue-500/20 font-mono">
+                            Soles (PEN)
+                        </span>
+                    </h2>
+                    <p class="text-xs text-gray-400">Resumen consolidado y cálculo del patrimonio neto real.</p>
+                </div>
+
+                <!-- Botón Acción Rápida Registro -->
+                <button onclick="openModalTransaction()" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-accentBlue to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold text-sm shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2 active:scale-95">
+                    <i class="fa-solid fa-plus text-xs"></i> Registrar Movimiento
+                </button>
+            </div>
+
+            <!-- TARJETAS DE BALANCES / KPIS -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                
+                <!-- 1. Total Ingresos -->
+                <div class="glass-card rounded-2xl p-4 border-l-4 border-l-accentGreen glow-green transition-all">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Ingresos</span>
+                        <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-accentGreen flex items-center justify-center">
+                            <i class="fa-solid fa-arrow-up text-xs"></i>
+                        </div>
+                    </div>
+                    <div class="text-lg font-bold font-mono text-emerald-400 truncate" id="kpiIncome">S/ 0.00</div>
+                    <p class="text-[10px] text-gray-500 mt-1">Entradas totales acumuladas</p>
+                </div>
+
+                <!-- 2. Total Gastos -->
+                <div class="glass-card rounded-2xl p-4 border-l-4 border-l-accentRed glow-red transition-all">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Gastos</span>
+                        <div class="w-7 h-7 rounded-lg bg-red-500/10 text-accentRed flex items-center justify-center">
+                            <i class="fa-solid fa-arrow-down text-xs"></i>
+                        </div>
+                    </div>
+                    <div class="text-lg font-bold font-mono text-red-400 truncate" id="kpiExpense">S/ 0.00</div>
+                    <p class="text-[10px] text-gray-500 mt-1">Egresos totales registrados</p>
+                </div>
+
+                <!-- 3. Balance en Caja -->
+                <div class="glass-card rounded-2xl p-4 border-l-4 border-l-gray-300 transition-all">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Caja Libre</span>
+                        <div class="w-7 h-7 rounded-lg bg-gray-500/10 text-gray-300 flex items-center justify-center">
+                            <i class="fa-solid fa-vault text-xs"></i>
+                        </div>
+                    </div>
+                    <div class="text-lg font-bold font-mono text-white truncate" id="kpiCashBalance">S/ 0.00</div>
+                    <p class="text-[10px] text-gray-500 mt-1">Ingresos − Gastos</p>
+                </div>
+
+                <!-- 4. Cuentas Por Cobrar -->
+                <div class="glass-card rounded-2xl p-4 border-l-4 border-l-accentBlue glow-blue transition-all">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Me Deben</span>
+                        <div class="w-7 h-7 rounded-lg bg-blue-500/10 text-accentBlue flex items-center justify-center">
+                            <i class="fa-solid fa-hand-holding-dollar text-xs"></i>
+                        </div>
+                    </div>
+                    <div class="text-lg font-bold font-mono text-blue-400 truncate" id="kpiReceivables">S/ 0.00</div>
+                    <p class="text-[10px] text-gray-500 mt-1">Por cobrar activos</p>
+                </div>
+
+                <!-- 5. Deudas Pasivas -->
+                <div class="glass-card rounded-2xl p-4 border-l-4 border-l-accentAmber glow-amber transition-all">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Yo Debo</span>
+                        <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-accentAmber flex items-center justify-center">
+                            <i class="fa-solid fa-file-invoice-dollar text-xs"></i>
+                        </div>
+                    </div>
+                    <div class="text-lg font-bold font-mono text-amber-400 truncate" id="kpiDebts">S/ 0.00</div>
+                    <p class="text-[10px] text-gray-500 mt-1">Deudas pendientes por pagar</p>
+                </div>
+
+                <!-- 6. Patrimonio Neto Real -->
+                <div class="glass-card rounded-2xl p-4 border-l-4 border-l-indigo-500 bg-gradient-to-br from-indigo-950/30 to-darkCard transition-all shadow-xl">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-indigo-300 uppercase tracking-wider">Patrimonio Neto</span>
+                        <div class="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                            <i class="fa-solid fa-chart-line text-xs"></i>
+                        </div>
+                    </div>
+                    <div class="text-lg font-extrabold font-mono text-indigo-300 truncate" id="kpiNetWorth">S/ 0.00</div>
+                    <p class="text-[10px] text-gray-400 mt-1">Caja Libre − Deudas</p>
+                </div>
+
+            </div>
+
+            <!-- FILTROS Y ESTADÍSTICAS TEMPORALES -->
+            <section class="glass-card rounded-2xl p-6 space-y-6">
+                
+                <!-- Encabezado de la Sección de Estadísticas -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-darkBorder pb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-accentBlue"></i>
+                            Análisis & Estadísticas
+                        </h3>
+                        <p class="text-xs text-gray-400">Selecciona el horizonte temporal para evaluar tu comportamiento financiero.</p>
+                    </div>
+
+                    <!-- Botones de Modo Temporal (Día, Mes, Año, Todo) -->
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="bg-darkBg p-1 rounded-xl border border-darkBorder flex items-center text-xs font-medium">
+                            <button id="btnPeriodDay" onclick="setPeriodMode('day')" class="px-3 py-1.5 rounded-lg transition-all text-gray-400 hover:text-white">Día</button>
+                            <button id="btnPeriodMonth" onclick="setPeriodMode('month')" class="px-3 py-1.5 rounded-lg transition-all bg-darkHover text-white shadow-sm font-semibold">Mes</button>
+                            <button id="btnPeriodYear" onclick="setPeriodMode('year')" class="px-3 py-1.5 rounded-lg transition-all text-gray-400 hover:text-white">Año</button>
+                            <button id="btnPeriodAll" onclick="setPeriodMode('all')" class="px-3 py-1.5 rounded-lg transition-all text-gray-400 hover:text-white">Histórico</button>
+                        </div>
+
+                        <!-- Selectores dinámicos de fecha según el periodo seleccionado -->
+                        <div id="dateSelectorContainer" class="flex items-center gap-2">
+                            <!-- Inyectado mediante Javascript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GRÁFICOS ANALÍTICOS -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Gráfico 1: Comparativo (Barras) -->
+                    <div class="lg:col-span-2 bg-darkBg/60 border border-darkBorder p-4 rounded-xl flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-chart-column text-accentGreen"></i> Ingresos vs. Gastos
+                            </h4>
+                            <span class="text-[11px] font-mono text-gray-500" id="barChartSubtitle">Vista Temporal</span>
+                        </div>
+                        <div class="relative w-full h-64">
+                            <canvas id="barChartIncomeExpense"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico 2: Categorías/Etiquetas (Dona) -->
+                    <div class="bg-darkBg/60 border border-darkBorder p-4 rounded-xl flex flex-col justify-between">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="text-xs font-bold text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-chart-pie text-accentRed"></i> Distribución de Gastos
+                            </h4>
+                            <span class="text-[11px] font-mono text-gray-500">Por Etiqueta</span>
+                        </div>
+                        <div class="relative w-full h-64 flex items-center justify-center">
+                            <canvas id="doughnutChartCategories"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- HISTORIAL Y GESTIÓN DE PENDIENTES (MODULOS) -->
+            <section class="glass-card rounded-2xl p-6 space-y-6">
+                
+                <!-- Pestañas de Filtrado de Lista -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-darkBorder pb-4">
+                    
+                    <!-- Tabs Módulos -->
+                    <div class="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-none">
+                        <button id="tabAll" onclick="setListFilter('all')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-accentBlue text-white shadow-md whitespace-nowrap">
+                            Todos los Registros
+                        </button>
+                        <button id="tabIncome" onclick="setListFilter('income')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-gray-400 hover:text-white hover:bg-darkBorder whitespace-nowrap">
+                            <i class="fa-solid fa-circle text-[8px] text-accentGreen mr-1"></i> Ingresos
+                        </button>
+                        <button id="tabExpense" onclick="setListFilter('expense')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-gray-400 hover:text-white hover:bg-darkBorder whitespace-nowrap">
+                            <i class="fa-solid fa-circle text-[8px] text-accentRed mr-1"></i> Gastos
+                        </button>
+                        <button id="tabReceivables" onclick="setListFilter('receivable')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-gray-400 hover:text-white hover:bg-darkBorder whitespace-nowrap">
+                            <i class="fa-solid fa-circle text-[8px] text-accentBlue mr-1"></i> Lo que me deben
+                        </button>
+                        <button id="tabDebts" onclick="setListFilter('debt')" class="px-4 py-2 rounded-xl text-xs font-bold transition-all text-gray-400 hover:text-white hover:bg-darkBorder whitespace-nowrap">
+                            <i class="fa-solid fa-circle text-[8px] text-accentAmber mr-1"></i> Mis Deudas
+                        </button>
+                    </div>
+
+                    <!-- Search and Tag Filter -->
+                    <div class="flex items-center gap-2">
+                        
+                        <!-- Search Box -->
+                        <div class="relative flex-1 sm:w-48">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs"></i>
+                            <input type="text" id="searchInput" oninput="renderTransactionsList()" placeholder="Buscar..." class="w-full bg-darkBg border border-darkBorder rounded-xl pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-accentBlue font-medium">
+                        </div>
+
+                        <!-- Tag Filter Selector -->
+                        <select id="tagFilterSelect" onchange="renderTransactionsList()" class="bg-darkBg border border-darkBorder rounded-xl px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-accentBlue">
+                            <option value="all">Todas las Etiquetas</option>
+                        </select>
+
+                    </div>
+
+                </div>
+
+                <!-- Tabla de Transacciones -->
+                <div class="overflow-x-auto rounded-xl border border-darkBorder bg-darkBg/30">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-darkBorder bg-darkBg/80 text-[11px] font-bold text-gray-400 uppercase tracking-wider font-mono">
+                                <th class="p-4">Fecha</th>
+                                <th class="p-4">Tipo</th>
+                                <th class="p-4">Descripción / Sujeto</th>
+                                <th class="p-4">Etiqueta</th>
+                                <th class="p-4 text-right">Monto</th>
+                                <th class="p-4 text-center">Estado / Acción</th>
+                                <th class="p-4 text-center">Opciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactionsTableBody" class="divide-y divide-darkBorder text-xs text-gray-300 font-medium">
+                            <!-- Inyectado Dinámicamente por JavaScript -->
+                        </tbody>
+                    </table>
+                    <div id="emptyState" class="hidden p-8 text-center text-gray-500">
+                        <i class="fa-solid fa-folder-open text-3xl mb-2 block"></i>
+                        No se encontraron registros para los filtros seleccionados.
+                    </div>
+                </div>
+
+            </section>
+
+        </main>
+    </div>
+
+    <footer class="border-t border-darkBorder py-6 bg-darkCard/50 mt-12 text-center text-xs text-gray-500">
+        <p>ApexFinance &copy; 2026 - Gestión Financiera Táctica & Personal en Soles (S/) y Euros (€)</p>
+    </footer>
+
+    <!-- MODAL REGISTRO DE TRANSACCIÓN -->
+    <div id="modalTransaction" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 modal modal-hidden">
+        <div class="bg-darkCard border border-darkBorder w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-6 relative">
+            
+            <!-- Encabezado Modal -->
+            <div class="flex items-center justify-between border-b border-darkBorder pb-4">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-accentBlue"></i>
+                    Nuevo Registro Financiero
+                </h3>
+                <button onclick="closeModalTransaction()" class="text-gray-400 hover:text-white transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="transactionForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                
+                <!-- Tipo de Registro -->
+                <div>
+                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Tipo de Operación</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        
+                        <label class="cursor-pointer">
+                            <input type="radio" name="txType" value="income" class="peer hidden" checked onchange="updateFormFields()">
+                            <div class="p-2.5 rounded-xl border border-darkBorder bg-darkBg text-center peer-checked:border-accentGreen peer-checked:bg-emerald-500/10 peer-checked:text-accentGreen text-xs font-bold transition-all">
+                                <i class="fa-solid fa-arrow-up text-xs block mb-1"></i> Ingreso
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer">
+                            <input type="radio" name="txType" value="expense" class="peer hidden" onchange="updateFormFields()">
+                            <div class="p-2.5 rounded-xl border border-darkBorder bg-darkBg text-center peer-checked:border-accentRed peer-checked:bg-red-500/10 peer-checked:text-accentRed text-xs font-bold transition-all">
+                                <i class="fa-solid fa-arrow-down text-xs block mb-1"></i> Gasto
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer">
+                            <input type="radio" name="txType" value="receivable" class="peer hidden" onchange="updateFormFields()">
+                            <div class="p-2.5 rounded-xl border border-darkBorder bg-darkBg text-center peer-checked:border-accentBlue peer-checked:bg-blue-500/10 peer-checked:text-accentBlue text-xs font-bold transition-all">
+                                <i class="fa-solid fa-hand-holding-dollar text-xs block mb-1"></i> Me Deben
+                            </div>
+                        </label>
+
+                        <label class="cursor-pointer">
+                            <input type="radio" name="txType" value="debt" class="peer hidden" onchange="updateFormFields()">
+                            <div class="p-2.5 rounded-xl border border-darkBorder bg-darkBg text-center peer-checked:border-accentAmber peer-checked:bg-amber-500/10 peer-checked:text-accentAmber text-xs font-bold transition-all">
+                                <i class="fa-solid fa-file-invoice-dollar text-xs block mb-1"></i> Yo Debo
+                            </div>
+                        </label>
+
+                    </div>
+                </div>
+
+                <!-- Monto y Fecha -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 mb-1">Monto (<span class="formCurrencySymbol font-mono">S/</span>)</label>
+                        <input type="number" step="0.01" min="0.01" id="txAmount" required placeholder="0.00" class="w-full bg-darkBg border border-darkBorder rounded-xl px-3 py-2 text-sm text-white font-mono font-bold focus:outline-none focus:border-accentBlue">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-400 mb-1">Fecha</label>
+                        <input type="date" id="txDate" required class="w-full bg-darkBg border border-darkBorder rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-accentBlue">
+                    </div>
+                </div>
+
+                <!-- Campo Dinámico: Sujeto / Entidad o Concepto -->
+                <div id="subjectContainer">
+                    <label id="subjectLabel" class="block text-xs font-semibold text-gray-400 mb-1">Descripción / Detalle</label>
+                    <input type="text" id="txDescription" required placeholder="Ej: Trabajo Freelance, Mantenimiento, Compra..." class="w-full bg-darkBg border border-darkBorder rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-accentBlue">
+                </div>
+
+                <!-- Etiquetas / Tags -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-semibold text-gray-400">Etiqueta / Categoría</label>
+                        <button type="button" onclick="promptNewTag()" class="text-[11px] text-accentBlue hover:underline">+ Crear Nueva</button>
+                    </div>
+                    <select id="txTagSelect" class="w-full bg-darkBg border border-darkBorder rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-accentBlue">
+                        <!-- Creadas dinámicamente -->
+                    </select>
+                </div>
+
+                <!-- Botón Acción Submit -->
+                <div class="pt-4 flex items-center justify-end gap-3 border-t border-darkBorder">
+                    <button type="button" onclick="closeModalTransaction()" class="px-4 py-2 rounded-xl text-xs font-bold text-gray-400 hover:bg-darkBorder transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-accentBlue hover:bg-blue-600 text-white font-bold text-xs shadow-lg transition-all">
+                        Guardar Registro
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <script>
+        /* ==========================================================================
+           1. ESTADO DE LA APLICACIÓN & ESTRUCTURA DE DATOS
+           ========================================================================== */
+        
+        // Clave en LocalStorage
+        const STORAGE_KEY = 'ApexFinance_Data_v1';
+
+        // Estado Global
+        let appState = {
+            currentCurrency: 'PEN', // 'PEN' o 'EUR'
+            tags: ['#Personal', '#Negocio', '#Taller', '#Vehiculo', '#Hogar', '#Alimentacion', '#Servicios'],
+            transactions: {
+                PEN: [],
+                EUR: []
+            }
+        };
+
+        // Filtros Activos de la Vista
+        let currentPeriodMode = 'month'; // 'day', 'month', 'year', 'all'
+        let selectedDateValue = new Date().toISOString().substring(0, 7); // YYYY-MM por defecto
+        let currentListFilter = 'all'; // 'all', 'income', 'expense', 'receivable', 'debt'
+
+        // Referencias a Charts
+        let chartBarInstance = null;
+        let chartDoughnutInstance = null;
+
+        /* ==========================================================================
+           2. INICIALIZACIÓN Y PERSISTENCIA (LOCALSTORAGE)
+           ========================================================================== */
+        
+        window.onload = function() {
+            loadDataFromStorage();
+            setDefaultDates();
+            setupCurrencyUI();
+            updateTagDropdowns();
+            renderAll();
+        };
+
+        function loadDataFromStorage() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    appState = { ...appState, ...parsed };
+                }
+            } catch (e) {
+                console.error("Error al cargar datos desde LocalStorage:", e);
+            }
+        }
+
+        function saveDataToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+            } catch (e) {
+                console.error("Error al guardar en LocalStorage:", e);
+            }
+        }
+
+        function setDefaultDates() {
+            const today = new Date();
+            document.getElementById('txDate').value = today.toISOString().substring(0, 10);
+            updateDateSelectorUI();
+        }
+
+        /* ==========================================================================
+           3. GESTIÓN MULTIDIVISA (PEN / EUR)
+           ========================================================================== */
+        
+        function switchCurrency(currency) {
+            if (appState.currentCurrency === currency) return;
+            appState.currentCurrency = currency;
+            saveDataToStorage();
+            setupCurrencyUI();
+            renderAll();
+        }
+
+        function setupCurrencyUI() {
+            const isPEN = appState.currentCurrency === 'PEN';
+            const btnPEN = document.getElementById('btnCurrencyPEN');
+            const btnEUR = document.getElementById('btnCurrencyEUR');
+            const badge = document.getElementById('currentCurrencyBadge');
+
+            if (isPEN) {
+                btnPEN.className = "px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all duration-200 flex items-center gap-1.5 bg-accentBlue text-white shadow-md";
+                btnEUR.className = "px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all duration-200 flex items-center gap-1.5 text-gray-400 hover:text-white";
+                badge.innerText = "Soles (PEN)";
+                badge.className = "text-xs px-2.5 py-0.5 rounded-md bg-blue-500/10 text-accentBlue border border-blue-500/20 font-mono";
+            } else {
+                btnEUR.className = "px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all duration-200 flex items-center gap-1.5 bg-accentBlue text-white shadow-md";
+                btnPEN.className = "px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all duration-200 flex items-center gap-1.5 text-gray-400 hover:text-white";
+                badge.innerText = "Euros (EUR)";
+                badge.className = "text-xs px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-accentGreen border border-emerald-500/20 font-mono";
+            }
+
+            // Actualizar símbolos en formulario
+            const symbols = document.querySelectorAll('.formCurrencySymbol');
+            symbols.forEach(s => s.innerText = isPEN ? 'S/' : '€');
+        }
+
+        function getSymbol() {
+            return appState.currentCurrency === 'PEN' ? 'S/' : '€';
+        }
+
+        function formatMoney(amount) {
+            const symbol = getSymbol();
+            return `${symbol} ${parseFloat(amount || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+
+        /* ==========================================================================
+           4. RENDERIZADO GLOBAL & CÁLCULOS KPI
+           ========================================================================== */
+
+        function renderAll() {
+            const currentList = appState.transactions[appState.currentCurrency] || [];
+            
+            // 1. Cálculos de KPIs Totales Acumulados
+            let totalIncome = 0;
+            let totalExpense = 0;
+            let totalReceivables = 0;
+            let totalDebts = 0;
+
+            currentList.forEach(item => {
+                if (item.type === 'income') {
+                    totalIncome += item.amount;
+                } else if (item.type === 'expense') {
+                    totalExpense += item.amount;
+                } else if (item.type === 'receivable' && item.status === 'pending') {
+                    totalReceivables += item.amount;
+                } else if (item.type === 'debt' && item.status === 'pending') {
+                    totalDebts += item.amount;
+                }
+            });
+
+            const cashBalance = totalIncome - totalExpense;
+            const netWorth = cashBalance - totalDebts;
+
+            // Actualizar Tarjetas KPI
+            document.getElementById('kpiIncome').innerText = formatMoney(totalIncome);
+            document.getElementById('kpiExpense').innerText = formatMoney(totalExpense);
+            document.getElementById('kpiCashBalance').innerText = formatMoney(cashBalance);
+            document.getElementById('kpiReceivables').innerText = formatMoney(totalReceivables);
+            document.getElementById('kpiDebts').innerText = formatMoney(totalDebts);
+            
+            const netWorthEl = document.getElementById('kpiNetWorth');
+            netWorthEl.innerText = formatMoney(netWorth);
+            if (netWorth < 0) {
+                netWorthEl.className = "text-lg font-extrabold font-mono text-red-400 truncate";
+            } else {
+                netWorthEl.className = "text-lg font-extrabold font-mono text-indigo-300 truncate";
+            }
+
+            // 2. Renderizar Gráficos y Tablas
+            renderCharts();
+            renderTransactionsList();
+        }
+
+        /* ==========================================================================
+           5. FILTROS TEMPORALES Y MANEJO DE FECHAS
+           ========================================================================== */
+
+        function setPeriodMode(mode) {
+            currentPeriodMode = mode;
+            
+            // Actualizar estilo de botones
+            const modes = ['day', 'month', 'year', 'all'];
+            modes.forEach(m => {
+                const btn = document.getElementById(`btnPeriod${m.charAt(0).toUpperCase() + m.slice(1)}`);
+                if (m === mode) {
+                    btn.className = "px-3 py-1.5 rounded-lg transition-all bg-darkHover text-white shadow-sm font-semibold";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-lg transition-all text-gray-400 hover:text-white";
+                }
+            });
+
+            // Ajustar valor predeterminado de fecha según modo
+            const today = new Date();
+            if (mode === 'day') {
+                selectedDateValue = today.toISOString().substring(0, 10);
+            } else if (mode === 'month') {
+                selectedDateValue = today.toISOString().substring(0, 7);
+            } else if (mode === 'year') {
+                selectedDateValue = today.getFullYear().toString();
+            }
+
+            updateDateSelectorUI();
+            renderCharts();
+        }
+
+        function updateDateSelectorUI() {
+            const container = document.getElementById('dateSelectorContainer');
+            container.innerHTML = '';
+
+            if (currentPeriodMode === 'all') {
+                container.innerHTML = `<span class="text-xs text-gray-400 font-mono italic">Mostrando Todo</span>`;
+                return;
+            }
+
+            if (currentPeriodMode === 'day') {
+                container.innerHTML = `
+                    <input type="date" value="${selectedDateValue}" onchange="onDateFilterChange(this.value)" 
+                        class="bg-darkBg border border-darkBorder rounded-xl px-3 py-1 text-xs text-white focus:outline-none focus:border-accentBlue font-mono">
+                `;
+            } else if (currentPeriodMode === 'month') {
+                container.innerHTML = `
+                    <input type="month" value="${selectedDateValue}" onchange="onDateFilterChange(this.value)" 
+                        class="bg-darkBg border border-darkBorder rounded-xl px-3 py-1 text-xs text-white focus:outline-none focus:border-accentBlue font-mono">
+                `;
+            } else if (currentPeriodMode === 'year') {
+                const currentYear = new Date().getFullYear();
+                let options = '';
+                for (let y = currentYear; y >= currentYear - 5; y--) {
+                    options += `<option value="${y}" ${selectedDateValue == y ? 'selected' : ''}>${y}</option>`;
+                }
+                container.innerHTML = `
+                    <select onchange="onDateFilterChange(this.value)" class="bg-darkBg border border-darkBorder rounded-xl px-3 py-1 text-xs text-white focus:outline-none focus:border-accentBlue font-mono">
+                        ${options}
+                    </select>
+                `;
+            }
+        }
+
+        function onDateFilterChange(val) {
+            selectedDateValue = val;
+            renderCharts();
+        }
+
+        function filterByPeriod(transactions) {
+            if (currentPeriodMode === 'all') return transactions;
+
+            return transactions.filter(item => {
+                if (!item.date) return false;
+                if (currentPeriodMode === 'day') {
+                    return item.date === selectedDateValue;
+                } else if (currentPeriodMode === 'month') {
+                    return item.date.startsWith(selectedDateValue);
+                } else if (currentPeriodMode === 'year') {
+                    return item.date.startsWith(selectedDateValue);
+                }
+                return true;
+            });
+        }
+
+        /* ==========================================================================
+           6. GRÁFICOS CON CHART.JS
+           ========================================================================== */
+
+        function renderCharts() {
+            const currentList = appState.transactions[appState.currentCurrency] || [];
+            const filteredList = filterByPeriod(currentList);
+
+            // Subtítulo
+            document.getElementById('barChartSubtitle').innerText = 
+                currentPeriodMode === 'all' ? 'Histórico General' : `Filtro: ${selectedDateValue}`;
+
+            // 1. Gráfico de Barras: Comparativo Ingresos vs Gastos
+            let incSum = 0;
+            let expSum = 0;
+
+            filteredList.forEach(t => {
+                if (t.type === 'income') incSum += t.amount;
+                if (t.type === 'expense') expSum += t.amount;
+            });
+
+            const ctxBar = document.getElementById('barChartIncomeExpense').getContext('2d');
+            if (chartBarInstance) chartBarInstance.destroy();
+
+            chartBarInstance = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Ingresos', 'Gastos'],
+                    datasets: [{
+                        label: 'Monto Total',
+                        data: [incSum, expSum],
+                        backgroundColor: ['rgba(16, 185, 129, 0.7)', 'rgba(239, 68, 68, 0.7)'],
+                        borderColor: ['#10B981', '#EF4444'],
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        barThickness: 50
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${getSymbol()} ${context.raw.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: 'rgba(31, 41, 55, 0.5)' },
+                            ticks: { color: '#9CA3AF', font: { family: 'JetBrains Mono', size: 10 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#F3F4F6', font: { weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+
+            // 2. Gráfico de Dona: Distribución de Gastos por Etiqueta
+            const tagMap = {};
+            filteredList.filter(t => t.type === 'expense').forEach(t => {
+                const tag = t.tag || '#SinEtiqueta';
+                tagMap[tag] = (tagMap[tag] || 0) + t.amount;
+            });
+
+            const doughnutLabels = Object.keys(tagMap);
+            const doughnutData = Object.values(tagMap);
+
+            const colors = [
+                '#3B82F6', '#10B981', '#F59E0B', '#EC4899', 
+                '#8B5CF6', '#6366F1', '#14B8A6', '#F97316'
+            ];
+
+            const ctxDoughnut = document.getElementById('doughnutChartCategories').getContext('2d');
+            if (chartDoughnutInstance) chartDoughnutInstance.destroy();
+
+            if (doughnutLabels.length === 0) {
+                // Estado vacío en gráfico
+                chartDoughnutInstance = new Chart(ctxDoughnut, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Sin Gastos'],
+                        datasets: [{ data: [1], backgroundColor: ['#1F2937'] }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+            } else {
+                chartDoughnutInstance = new Chart(ctxDoughnut, {
+                    type: 'doughnut',
+                    data: {
+                        labels: doughnutLabels,
+                        datasets: [{
+                            data: doughnutData,
+                            backgroundColor: colors.slice(0, doughnutLabels.length),
+                            borderWidth: 2,
+                            borderColor: '#111827'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: '#9CA3AF', boxWidth: 12, font: { size: 11 } }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return ` ${context.label}: ${getSymbol()} ${context.raw.toFixed(2)}`;
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '70%'
+                    }
+                });
+            }
+        }
+
+        /* ==========================================================================
+           7. LISTADO Y TABLA DE TRANSACCIONES CON FILTROS Y ACCIONES
+           ========================================================================== */
+
+        function setListFilter(filter) {
+            currentListFilter = filter;
+            const tabs = ['all', 'income', 'expense', 'receivable', 'debt'];
+            
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab${t.charAt(0).toUpperCase() + t.slice(1)}`);
+                if (t === filter) {
+                    btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all bg-accentBlue text-white shadow-md whitespace-nowrap";
+                } else {
+                    btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all text-gray-400 hover:text-white hover:bg-darkBorder whitespace-nowrap";
+                }
+            });
+
+            renderTransactionsList();
+        }
+
+        function renderTransactionsList() {
+            const tbody = document.getElementById('transactionsTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            const selectedTag = document.getElementById('tagFilterSelect').value;
+
+            tbody.innerHTML = '';
+
+            let list = appState.transactions[appState.currentCurrency] || [];
+
+            // 1. Filtrar por Tipo de Transacción
+            if (currentListFilter !== 'all') {
+                list = list.filter(item => item.type === currentListFilter);
+            }
+
+            // 2. Filtrar por Etiqueta
+            if (selectedTag !== 'all') {
+                list = list.filter(item => item.tag === selectedTag);
+            }
+
+            // 3. Búsqueda por Texto
+            if (searchVal.trim() !== '') {
+                list = list.filter(item => 
+                    (item.description && item.description.toLowerCase().includes(searchVal)) ||
+                    (item.tag && item.tag.toLowerCase().includes(searchVal))
+                );
+            }
+
+            // Ordenar por fecha descendente
+            list.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            if (list.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            list.forEach(tx => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-darkBorder/40 transition-colors";
+
+                // Badge Tipo
+                let typeBadge = '';
+                let amountColor = '';
+                
+                if (tx.type === 'income') {
+                    typeBadge = `<span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-accentGreen text-[10px] font-bold border border-emerald-500/20">Ingreso</span>`;
+                    amountColor = 'text-accentGreen';
+                } else if (tx.type === 'expense') {
+                    typeBadge = `<span class="px-2 py-0.5 rounded-md bg-red-500/10 text-accentRed text-[10px] font-bold border border-red-500/20">Gasto</span>`;
+                    amountColor = 'text-accentRed';
+                } else if (tx.type === 'receivable') {
+                    typeBadge = `<span class="px-2 py-0.5 rounded-md bg-blue-500/10 text-accentBlue text-[10px] font-bold border border-blue-500/20">Por Cobrar</span>`;
+                    amountColor = 'text-accentBlue';
+                } else if (tx.type === 'debt') {
+                    typeBadge = `<span class="px-2 py-0.5 rounded-md bg-amber-500/10 text-accentAmber text-[10px] font-bold border border-amber-500/20">Deuda Pasiva</span>`;
+                    amountColor = 'text-accentAmber';
+                }
+
+                // Estado / Botón Acción
+                let statusCell = '-';
+                if (tx.type === 'receivable') {
+                    if (tx.status === 'pending') {
+                        statusCell = `<button onclick="settlePendingItem('${tx.id}', 'receivable')" class="px-2.5 py-1 rounded-lg bg-accentBlue/20 text-accentBlue hover:bg-accentBlue hover:text-white transition-all text-[11px] font-bold">
+                            <i class="fa-solid fa-check mr-1"></i> Marcar Cobrado
+                        </button>`;
+                    } else {
+                        statusCell = `<span class="text-accentGreen text-[11px] font-bold"><i class="fa-solid fa-circle-check"></i> Cobrado</span>`;
+                    }
+                } else if (tx.type === 'debt') {
+                    if (tx.status === 'pending') {
+                        statusCell = `<button onclick="settlePendingItem('${tx.id}', 'debt')" class="px-2.5 py-1 rounded-lg bg-accentAmber/20 text-accentAmber hover:bg-accentAmber hover:text-white transition-all text-[11px] font-bold">
+                            <i class="fa-solid fa-check mr-1"></i> Marcar Pagado
+                        </button>`;
+                    } else {
+                        statusCell = `<span class="text-accentRed text-[11px] font-bold"><i class="fa-solid fa-circle-check"></i> Pagado</span>`;
+                    }
+                }
+
+                tr.innerHTML = `
+                    <td class="p-4 font-mono text-gray-400 text-[11px]">${tx.date}</td>
+                    <td class="p-4">${typeBadge}</td>
+                    <td class="p-4 font-semibold text-white">${tx.description}</td>
+                    <td class="p-4"><span class="px-2 py-0.5 rounded-md bg-darkBg text-gray-400 border border-darkBorder font-mono text-[10px]">${tx.tag}</span></td>
+                    <td class="p-4 text-right font-mono font-bold ${amountColor}">${getSymbol()} ${tx.amount.toFixed(2)}</td>
+                    <td class="p-4 text-center">${statusCell}</td>
+                    <td class="p-4 text-center">
+                        <button onclick="deleteTransaction('${tx.id}')" class="text-gray-500 hover:text-accentRed p-1 transition-colors" title="Eliminar">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        /* ==========================================================================
+           8. ACCIONES DE REGISTRO & CONVERSIÓN DE PENDIENTES
+           ========================================================================== */
+
+        function openModalTransaction() {
+            const modal = document.getElementById('modalTransaction');
+            modal.classList.remove('modal-hidden');
+            updateFormFields();
+        }
+
+        function closeModalTransaction() {
+            const modal = document.getElementById('modalTransaction');
+            modal.classList.add('modal-hidden');
+            document.getElementById('transactionForm').reset();
+        }
+
+        function updateFormFields() {
+            const selectedType = document.querySelector('input[name="txType"]:checked').value;
+            const label = document.getElementById('subjectLabel');
+            const descInput = document.getElementById('txDescription');
+
+            if (selectedType === 'receivable') {
+                label.innerText = "Deudor (¿Quién te debe?)";
+                descInput.placeholder = "Ej: Juan Pérez / Taller Mecánico";
+            } else if (selectedType === 'debt') {
+                label.innerText = "Acreedor (¿A quién le debes?)";
+                descInput.placeholder = "Ej: Banco / Préstamo Familiar";
+            } else {
+                label.innerText = "Descripción / Detalle";
+                descInput.placeholder = "Ej: Pago de servicio, compra, etc.";
+            }
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const type = document.querySelector('input[name="txType"]:checked').value;
+            const amount = parseFloat(document.getElementById('txAmount').value);
+            const date = document.getElementById('txDate').value;
+            const description = document.getElementById('txDescription').value;
+            const tag = document.getElementById('txTagSelect').value;
+
+            const newTx = {
+                id: Date.now().toString(),
+                type: type,
+                amount: amount,
+                date: date,
+                description: description,
+                tag: tag,
+                status: (type === 'receivable' || type === 'debt') ? 'pending' : 'completed'
+            };
+
+            appState.transactions[appState.currentCurrency].push(newTx);
+            saveDataToStorage();
+            closeModalTransaction();
+            renderAll();
+        }
+
+        // Marcar como Cobrado / Pagado
+        function settlePendingItem(id, type) {
+            const list = appState.transactions[appState.currentCurrency];
+            const item = list.find(t => t.id === id);
+
+            if (!item) return;
+
+            item.status = 'settled';
+
+            // Convertir automáticamente a ingreso o gasto según corresponda
+            if (type === 'receivable') {
+                // Crear un ingreso correspondiente
+                const newIncome = {
+                    id: Date.now().toString(),
+                    type: 'income',
+                    amount: item.amount,
+                    date: new Date().toISOString().substring(0, 10),
+                    description: `Cobro realizado: ${item.description}`,
+                    tag: item.tag,
+                    status: 'completed'
+                };
+                list.push(newIncome);
+            } else if (type === 'debt') {
+                // Crear un gasto correspondiente
+                const newExpense = {
+                    id: Date.now().toString(),
+                    type: 'expense',
+                    amount: item.amount,
+                    date: new Date().toISOString().substring(0, 10),
+                    description: `Pago de deuda: ${item.description}`,
+                    tag: item.tag,
+                    status: 'completed'
+                };
+                list.push(newExpense);
+            }
+
+            saveDataToStorage();
+            renderAll();
+        }
+
+        function deleteTransaction(id) {
+            const list = appState.transactions[appState.currentCurrency];
+            appState.transactions[appState.currentCurrency] = list.filter(t => t.id !== id);
+            saveDataToStorage();
+            renderAll();
+        }
+
+        /* ==========================================================================
+           9. GESTIÓN DE ETIQUETAS (TAGS)
+           ========================================================================== */
+
+        function promptNewTag() {
+            const newTag = prompt("Ingresa el nombre de la nueva etiqueta (Ej: #Negocio):");
+            if (newTag && newTag.trim() !== '') {
+                let formattedTag = newTag.trim();
+                if (!formattedTag.startsWith('#')) formattedTag = '#' + formattedTag;
+                
+                if (!appState.tags.includes(formattedTag)) {
+                    appState.tags.push(formattedTag);
+                    saveDataToStorage();
+                    updateTagDropdowns();
+                    document.getElementById('txTagSelect').value = formattedTag;
+                }
+            }
+        }
+
+        function updateTagDropdowns() {
+            const txSelect = document.getElementById('txTagSelect');
+            const filterSelect = document.getElementById('tagFilterSelect');
+
+            txSelect.innerHTML = '';
+            filterSelect.innerHTML = '<option value="all">Todas las Etiquetas</option>';
+
+            appState.tags.forEach(tag => {
+                const opt1 = document.createElement('option');
+                opt1.value = tag;
+                opt1.innerText = tag;
+                txSelect.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = tag;
+                opt2.innerText = tag;
+                filterSelect.appendChild(opt2);
+            });
+        }
+
+        /* ==========================================================================
+           10. BACKUP Y RESPALDO DE DATOS (IMPORT / EXPORT)
+           ========================================================================== */
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `ApexFinance_Backup_${new Date().toISOString().substring(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importData(event) {
+            const fileReader = new FileReader();
+            fileReader.onload = function(e) {
+                try {
+                    const importedState = JSON.parse(e.target.result);
+                    if (importedState.transactions && importedState.tags) {
+                        appState = importedState;
+                        saveDataToStorage();
+                        setupCurrencyUI();
+                        updateTagDropdowns();
+                        renderAll();
+                    } else {
+                        alert("El archivo subido no tiene un formato válido de respaldo.");
+                    }
+                } catch (err) {
+                    alert("Error al leer el archivo JSON.");
+                }
+            };
+            fileReader.readAsText(event.target.files[0]);
+        }
+
+        function confirmResetData() {
+            if (confirm("¿Estás seguro de que deseas borrar todos tus registros registrados? Esta acción no se puede deshacer.")) {
+                appState.transactions = { PEN: [], EUR: [] };
+                saveDataToStorage();
+                renderAll();
+            }
+        }
+    </script>
+</body>
+</html>
